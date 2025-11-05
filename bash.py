@@ -1,5 +1,6 @@
 import psutil
 import re
+import os
 
 
 def get_vfs_name():
@@ -12,16 +13,14 @@ def expand_environment_variables(text):
     Раскрывает переменные окружения в тексте.
     Заменяет $VAR и ${VAR} на заданные значения.
     """
-    env_vars = {
-        "HOME": "/home/user",
-        "USER": "testuser",
-        "PWD": "/home/user/vfs",
-        "VFS_ROOT": "/vfs/storage"
-    }
-
     def replace_var(match):
         var_name = match.group(1) or match.group(2)
-        return env_vars.get(var_name, match.group(0))
+        # Пытаемся получить переменную из окружения
+        try:
+            return os.environ[var_name]
+        except KeyError:
+            # Если переменной нет, оставляем оригинальную строку
+            return match.group(0)
 
     pattern = r'\$([a-zA-Z_][a-zA-Z0-9_]*)|\$\{([^}]*)\}'
     return re.sub(pattern, replace_var, text)
@@ -29,7 +28,6 @@ def expand_environment_variables(text):
 
 if __name__ == "__main__":
     vfs_name = get_vfs_name()
-    # после ошибки в приглашении к вводу будет -
     success_symbol = "+"
     failure_symbol = "-"
     status_symbol = success_symbol
@@ -50,19 +48,41 @@ if __name__ == "__main__":
         if not parts:
             continue
 
-        cmd, *args = parts
-        match cmd:
-            case "ls":
-                print(cmd, args)
-                success = True
+        cmd, *raw_args = parts
+        args = []
+        success_vars = True
+        for arg in raw_args:
+            if arg[0] == "$":
+                try:
+                    var = os.environ[arg[1:]]
+                    args.append(var)
+                except KeyError:
+                    # Если переменной нет, оставляем оригинальную строку
+                    print("Не удалось получить переменную окружения")
+                    success_vars = False
+            else:
+                args.append(arg)
 
-            case "cd":
-                print(cmd, args)
-                success = True
+        # if len(args) == 1 and args[0] == "$":
+        #     try:
+        #         print(os.environ[args[1:]])
+        #     except KeyError:
+        #         # Если переменной нет, оставляем оригинальную строку
+        #         print("Не удалось получить переменную окружения")
 
-            case "exit":
-                exit(0)
+        if success_vars:
+            match cmd:
+                case "ls":
+                    print(cmd, args)
+                    success = True
 
-            case _:
-                print("command not found")
-                success = False
+                case "cd":
+                    print(cmd, args)
+                    success = True
+
+                case "exit":
+                    exit(0)
+
+                case _:
+                    print("command not found")
+                    success = False

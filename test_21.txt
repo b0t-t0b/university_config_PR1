@@ -1,0 +1,7 @@
+# скрипт
+ls -l
+cd /home/user
+ls f g
+ls
+heethd
+exit
