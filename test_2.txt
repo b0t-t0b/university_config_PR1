@@ -1,0 +1,6 @@
+# Тестовый скрипт
+ls -l
+cd /home/user
+ls
+heethd
+exit
